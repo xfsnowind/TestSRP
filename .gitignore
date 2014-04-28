@@ -1,1 +1,14 @@
-target/**
+.idea
+.checkstyle
+.pmd
+.ruleset
+.settings
+.classpath
+.project
+target
+tags
+out/
+reports/
+*.iml
+*.swp
+config.yaml
