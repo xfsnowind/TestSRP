@@ -1,8 +1,0 @@
-Manifest-Version: 1.0
-Built-By: feng
-Build-Jdk: 1.7.0_55
-Implementation-Title: testsrp
-Implementation-Version: 0.0.1
-Implementation-Vendor-Id: com.nesstar
-Created-By: Maven Integration for Eclipse
-

@@ -1,9 +1,10 @@
 package com.nesstar.resources;
 
+import java.io.IOException;
 import java.math.BigInteger;
-import java.sql.Blob;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -17,71 +18,79 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import com.codahale.metrics.annotation.Timed;
+import com.nesstar.common.ServerHandler;
 import com.nesstar.reprensentation.Authentication;
 import com.nimbusds.srp6.Hex;
-import com.nimbusds.srp6.SRP6ClientCredentials;
-import com.nimbusds.srp6.SRP6ClientSession;
 import com.nimbusds.srp6.SRP6CryptoParams;
-import com.nimbusds.srp6.SRP6Exception;
-import com.nimbusds.srp6.SRP6ServerSession;
+import com.nimbusds.srp6.SRP6Routines;
 
 @Path("auth")
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthenticationResource {
 	private Authentication authentication = null;
 	private SRP6CryptoParams config = null;
-	private SRP6ServerSession server = null;
+	private MessageDigest digest = null;
+	private ServerHandler serverHanlder;
 	
-	public AuthenticationResource () {
+	public AuthenticationResource(ServerHandler serverHandler) {
+		this.serverHanlder = serverHandler;
 		this.authentication = new Authentication();
-		this.config = SRP6CryptoParams.getInstance();
-		this.server = new SRP6ServerSession(config);
+		this.config = SRP6CryptoParams.getInstance(1024, "SHA-1");
+		this.digest = this.config.getMessageDigestInstance();
 	}
-	
 	
 	@Path("step1")
 	@GET
     @Timed
     public Object step1(@QueryParam("username") String username, @QueryParam("A") String A) {
 		HashMap<String, Object> result = new LinkedHashMap<String, Object>();
-		String dbUrl = "jdbc:mysql://localhost/SRP";
         String dbClass = "com.mysql.jdbc.Driver";
         String query = "select salt, convert(verifier using utf8) as verifier from SRP.User where username='" + username + "';";
-        String databaseUsername = "root";
-        String databasePassword = "root";
         String salt = null;
         String verifier = null;
+        Connection connection;
         try {
 
             Class.forName(dbClass);
-            Connection connection = DriverManager.getConnection(dbUrl, databaseUsername, databasePassword);
+            connection = this.serverHanlder.getConnection();
             Statement statement = connection.createStatement();
             ResultSet rs = statement.executeQuery(query);
             
             // iterate through the java resultset
             while (rs.next())
             {
-              salt = rs.getString("salt");
-              verifier = rs.getString("verifier");
+            	salt = rs.getString("salt");
+            	verifier = rs.getString("verifier");
             }
             connection.close();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (SQLException e) {
             e.printStackTrace();
-        }
+        } catch (IOException e) {
+			e.printStackTrace();
+		}
         
-		// Retrieve user verifier 'v' + salt 's' from database
+		// Retrieve user verifier 'v' from database
 		BigInteger v = Hex.decodeToBigInteger(verifier);
-		BigInteger s = Hex.decodeToBigInteger(salt);
-		this.authentication.setSalt(s);
-		this.authentication.setA(Hex.decodeToBigInteger(A));
+		BigInteger bigIntegerA = Hex.decodeToBigInteger(A);
+		
 
 		// Compute the public server value 'B'
-		BigInteger B = server.step1(username, s, v);
-		System.out.println("b: " + Hex.encode(B));;
-		this.authentication.setB(B);
+		BigInteger k = SRP6Routines.computeK(this.digest, this.config.N, config.g);
+		this.digest.reset();
 		
+		SecureRandom random = new SecureRandom();
+		BigInteger b = SRP6Routines.generatePrivateValue(this.digest, this.config.N, random);
+		this.digest.reset();
+		
+		BigInteger B = SRP6Routines.computePublicServerValue(this.config.N, this.config.g, k, v, b);
+		
+		BigInteger u = SRP6Routines.computeU(this.digest, this.config.N, bigIntegerA, B);
+		this.authentication.setU(u);
+		this.authentication.setB(b);
+		this.authentication.setV(v);
+		this.authentication.setA(bigIntegerA);
 		
 		result.put("B", Hex.encode(B));
 		result.put("salt", salt);
@@ -93,19 +102,12 @@ public class AuthenticationResource {
 	@GET
 	@Timed
 	public Object step2(@QueryParam("S") String Sclient) {
-		SRP6ClientSession client = new SRP6ClientSession();
-		SRP6ClientCredentials cred = null;
 		BigInteger Sserver = null;
 		HashMap<String, Object> result = new LinkedHashMap<String, Object>();
 
-		try {
-	        cred = client.step2(this.config, this.authentication.getSalt(), this.authentication.getB());
-	        Sserver = this.server.step2(this.authentication.getA(), cred.M1);
-		} catch (SRP6Exception e) {
-		        // Invalid server 'B'
-		}
+		Sserver = SRP6Routines.computeSessionKey(this.config.N, this.authentication.getV(), this.authentication.getU(), this.authentication.getA(), this.authentication.getB());
 		
-		if (Sserver.toString().equals(Sclient)) {
+		if (Sserver.toString(16).equals(Sclient)) {
 			result.put("auth", true);
 		} else {
 			result.put("auth", false);

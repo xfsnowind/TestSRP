@@ -1,7 +1,11 @@
 package com.nesstar;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 
+import com.nesstar.common.ServerHandler;
 import com.nesstar.resources.AuthenticationResource;
 import com.nesstar.resources.RegisterResource;
 
@@ -21,10 +25,19 @@ public class TestSRPApplication extends Application<TestSRPConfiguration> {
 
     @Override
     public void run(TestSRPConfiguration configuration, Environment environment) {
-    	environment.jersey().register(new RegisterResource());
-    	environment.jersey().register(new AuthenticationResource());
+    	Map<String, String> filters = new HashMap<String, String>();
+    	String dbURI = configuration.getDatabaseURI();
+        String dbUsername = configuration.getUsername();
+        String dbPassword = configuration.getPassword();
+
+        ServerHandler serverHandler = new ServerHandler(dbURI, dbUsername, dbPassword);
+    	filters.put("allowedHeaders", "X-Requested-With,Content-Type,Accept,Origin");
+    	filters.put("allowedOrigins", "*");
     	
-    	environment.servlets().addFilter("/*", new CrossOriginFilter())
-    	.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin");
+    	environment.jersey().register(new RegisterResource(serverHandler));
+    	environment.jersey().register(new AuthenticationResource(serverHandler));
+    	
+    	environment.servlets().addFilter("*", new CrossOriginFilter())
+    	.setInitParameters(filters);
     }
 }
