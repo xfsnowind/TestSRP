@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 
+import com.bazaarvoice.dropwizard.assets.ConfiguredAssetsBundle;
 import com.nesstar.common.ServerHandler;
 import com.nesstar.resources.AuthenticationResource;
 import com.nesstar.resources.RegisterResource;
@@ -20,7 +21,7 @@ public class TestSRPApplication extends Application<TestSRPConfiguration> {
 
     @Override
     public void initialize(Bootstrap<TestSRPConfiguration> bootstrap) {
-        // nothing to do yet
+    	bootstrap.addBundle(new ConfiguredAssetsBundle("/assets/", "/"));
     }
 
     @Override
@@ -37,7 +38,6 @@ public class TestSRPApplication extends Application<TestSRPConfiguration> {
     	environment.jersey().register(new RegisterResource(serverHandler));
     	environment.jersey().register(new AuthenticationResource(serverHandler));
     	
-    	environment.servlets().addFilter("*", new CrossOriginFilter())
-    	.setInitParameters(filters);
+    	environment.servlets().addFilter("*", new CrossOriginFilter()).setInitParameters(filters);
     }
 }

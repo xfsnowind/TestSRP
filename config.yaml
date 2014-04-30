@@ -1,10 +1,21 @@
 username: root
 password: root
 databaseURI: jdbc:mysql://localhost/SRP
+assets:
+  overrides:
+    /: /home/feng/Projects/RAIRD_EXPERIMENT_PROJECTS/SRPClient/deploy/
+  mimeTypes:
+    woff: application/font-woff
 server:
   applicationConnectors:
-  - type: http 
+  - type: http
     port: 3000
+  - type: https
+    port: 8443
+    keyStorePath: keystore
+    keyStorePassword: changeit
+    trustStorePath: /etc/ssl/certs/cacerts
+    trustStorePassword: changeit
   adminConnectors:
   - type: http
     port: 3001

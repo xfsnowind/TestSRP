@@ -27,8 +27,6 @@ public class RegisterResource {
 		this.serverHanlder = serverHandler;
 	}
 	
-    
-
     @GET
     @Timed
     public void register(@QueryParam("username") String username,

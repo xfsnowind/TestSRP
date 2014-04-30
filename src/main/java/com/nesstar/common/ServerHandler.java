@@ -8,7 +8,6 @@ import java.sql.SQLException;
 
 public final class ServerHandler {
 
-
    private final String dbURI;
    private final String dbUsername;
    private final String dbPassword;
