@@ -21,7 +21,7 @@ public class TestSRPApplication extends Application<TestSRPConfiguration> {
 
     @Override
     public void initialize(Bootstrap<TestSRPConfiguration> bootstrap) {
-    	bootstrap.addBundle(new ConfiguredAssetsBundle("/assets/", "/"));
+    	bootstrap.addBundle(new ConfiguredAssetsBundle("/assets/", "/test"));
     }
 
     @Override

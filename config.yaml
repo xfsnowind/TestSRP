@@ -3,7 +3,7 @@ password: root
 databaseURI: jdbc:mysql://localhost/SRP
 assets:
   overrides:
-    /: /home/feng/Projects/RAIRD_EXPERIMENT_PROJECTS/SRPClient/deploy/
+    /test: src/main/resources/assets/
   mimeTypes:
     woff: application/font-woff
 server:
